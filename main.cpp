@@ -2,11 +2,13 @@
 #include <fstream>
 #include <string>
 #include <forward_list>
+#include <unordered_map>
+#include <regex>
 using namespace std;
 
 // Function Forward Declarations
 bool readInDictionary(string filename, int wordLength);
-char generateGuess();
+char generateGuess(string word);
 
 // Global Variables
 forward_list<string>* dictionary;
@@ -24,14 +26,14 @@ int main() {
 
 	string word;
 	for (int i = 0; i < numLetters; i++) {
-		word += '_';
+		word += '.';
 	}
 	cout << word << endl;
 
 	string input = "q";
-	while (word.find('_') != string::npos) {
-		cout << "Suggested Guess: " << generateGuess() << endl;
-		cout << "Enter updated word (_ for unknown) - 'q' to exit: " << endl;
+	while (word.find('.') != string::npos) {
+		cout << "Suggested Guess: " << generateGuess(word) << endl;
+		cout << "Enter updated word (use . for unknown) - 'q' to exit: " << endl;
 		cin >> input;
 
 		if (input == "q") {
@@ -73,6 +75,33 @@ bool readInDictionary(string filename, int wordLength) {
 	return true;
 }
 
-char generateGuess() {
-	return 'a';
+char generateGuess(string word) {
+	// Removes all words from the dictionary that don't match the current word
+	// TODO: Remove words with too many of guessed letters
+	regex pattern = regex(word, regex_constants::optimize);
+	dictionary->remove_if([&pattern](string word) -> bool { return !regex_match(word, pattern); });
+
+	// Count character occurences in words
+	// TODO: prevent suggesting the same character twice
+	unordered_map<char, int> characterCount;
+	for (auto itr = dictionary->begin(); itr != dictionary->end(); itr++) {
+		for (char c : *itr) {
+			if (characterCount.count(c) == 0) {
+				characterCount.emplace(c, 1);
+			}
+			else {
+				characterCount.at(c)++;
+			}
+		}
+	}
+
+	// Choose the letter with the most occurences
+	auto suggestion = characterCount.begin();
+	for (auto itr = characterCount.begin(); itr != characterCount.end(); itr++) {
+		if (itr->second > suggestion->second) {
+			suggestion = itr;
+		}
+	}
+
+	return suggestion->first;
 }
